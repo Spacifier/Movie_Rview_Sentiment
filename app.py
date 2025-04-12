@@ -11,7 +11,7 @@ rf_model = joblib.load('lr_model.pkl')
 tfidf_vectorizer = joblib.load('tfidf_vectorizer.pkl')
 
 # OMDb API Key
-OMDB_API_KEY = "ba45b4ce"
+OMDB_API_KEY = os.environ.get("OMDB_API_KEY", "ba45b4ce")
 
 def predict_sentiment(review):
     review_tfidf = tfidf_vectorizer.transform([review])
