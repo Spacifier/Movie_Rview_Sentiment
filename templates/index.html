@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Sentiment Analysis</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa;
+            color: #1a1a1a;
+        }
+        
+        .card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card-hover {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .progress-bar {
+            height: 8px;
+            border-radius: 4px;
+            background: #e5e7eb;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease-in-out;
+        }
+        
+        .animate-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+    <div class="container mx-auto max-w-5xl">
+        <header class="text-center mb-12 animate-in">
+            <h1 class="text-5xl font-bold mb-4 text-gray-900">
+                🎬 Movie Insights
+            </h1>
+            <p class="text-gray-600 text-lg">Discover what people really think about your favorite movies</p>
+        </header>
+        
+        <form id="analyzeForm" class="card rounded-lg p-6 mb-8 animate-in">
+            <div class="relative">
+                <input type="text" id="movieTitle" name="movie_title" 
+                       class="w-full bg-gray-50 border border-gray-200 rounded-lg py-3 px-4 pl-12 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition duration-200"
+                       placeholder="Enter a movie title...">
+                <i class="fas fa-film absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+            </div>
+            <button type="submit" 
+                    class="mt-4 w-full bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-blue-700 transition duration-200 flex items-center justify-center gap-2">
+                <i class="fas fa-search"></i>
+                Analyze Sentiments
+            </button>
+        </form>
+
+        <div id="loading" class="hidden">
+            <div class="flex flex-col items-center justify-center space-y-4">
+                <div class="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                <p class="text-gray-600 text-lg">Analyzing movie reviews...</p>
+            </div>
+        </div>
+
+        <div id="results" class="hidden space-y-8">
+            <!-- Movie Info Card -->
+            <div id="movieInfo" class="card rounded-lg p-6 card-hover animate-in">
+                <div class="flex items-center mb-4">
+                    <i class="fas fa-film text-2xl text-blue-600 mr-3"></i>
+                    <h2 class="text-2xl font-bold text-gray-900">Movie Information</h2>
+                </div>
+                <div id="movieDetails" class="text-gray-700"></div>
+            </div>
+
+            <!-- Sentiment Stats Card -->
+            <div id="sentimentStats" class="card rounded-lg p-6 card-hover animate-in">
+                <div class="flex items-center mb-4">
+                    <i class="fas fa-chart-pie text-2xl text-blue-600 mr-3"></i>
+                    <h2 class="text-2xl font-bold text-gray-900">Sentiment Overview</h2>
+                </div>
+                <div id="statsDetails"></div>
+            </div>
+
+            <!-- Reviews List -->
+            <div id="reviewsList" class="card rounded-lg p-6 animate-in">
+                <div class="flex items-center mb-4">
+                    <i class="fas fa-comments text-2xl text-blue-600 mr-3"></i>
+                    <h2 class="text-2xl font-bold text-gray-900">Review Analysis</h2>
+                </div>
+                <div id="reviewsDetails" class="space-y-4"></div>
+            </div>
+        </div>
+
+        <div id="error" class="hidden animate-in">
+            <div class="bg-red-50 border border-red-200 rounded-lg p-6 flex items-center">
+                <i class="fas fa-exclamation-circle text-2xl text-red-500 mr-3"></i>
+                <span id="errorMessage" class="text-red-600"></span>
+            </div>
+        </div>
+    </div>
+    <div class="max-w-4xl mx-auto p-6 mb-8 bg-white border rounded-lg shadow-md dark:bg-gray-800 dark:border-gray-700">
+        <h2 class="text-xl font-bold mb-4">Test My Model</h2>
+        <form id="testModelForm" class="space-y-4">
+            <textarea id="reviewText" name="review_text" rows="4"
+                      class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg py-3 px-4 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                      placeholder="Enter a review to test sentiment"></textarea>
+            <button type="submit"
+                    class="w-full bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-blue-700 transition duration-200">
+                Test Sentiment
+            </button>
+        </form>
+        <div id="testModelResult" class="mt-4 text-lg hidden">
+            <p><strong>Review:</strong> <span id="testReview"></span></p>
+            <p><strong>Predicted Sentiment:</strong> <span id="testSentiment"></span></p>
+        </div>
+    </div>
+    
+    
+
+<script>
+     document.addEventListener('DOMContentLoaded', () => {
+        const testModelForm = document.getElementById('testModelForm');
+        const testModelResult = document.getElementById('testModelResult');
+        const testReview = document.getElementById('testReview');
+        const testSentiment = document.getElementById('testSentiment');
+
+        testModelForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const reviewText = document.getElementById('reviewText').value;
+            if (!reviewText.trim()) {
+                alert("Please enter a review.");
+                return;
+            }
+
+            fetch('/test_model', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({ review_text: reviewText }),
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.error) {
+                        alert(data.error);
+                    } else {
+                        testReview.textContent = data.review;
+                        testSentiment.textContent = data.sentiment.charAt(0).toUpperCase() + data.sentiment.slice(1);
+                        testModelResult.classList.remove('hidden');
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                    alert('An error occurred while testing the model.');
+                });
+        });
+    });
+    $(document).ready(function() {
+        $('#analyzeForm').on('submit', function(e) {
+            e.preventDefault();
+            $('#results').hide();
+            $('#error').hide();
+            $('#loading').show();
+
+            $.ajax({url: '/analyze',method: 'POST',
+                data: $(this).serialize(),
+                success: function(response) {
+                    $('#loading').hide();
+                    
+                    if (response.error) {
+                        $('#errorMessage').text(response.error);
+                        $('#error').show();
+                        return;
+                    }
+
+                    // Movie Information
+                    let movieHtml = `
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="space-y-2">
+                                <p class="flex items-center">
+                                    <i class="fas fa-ticket-alt w-6 text-gray-500"></i>
+                                    <span class="font-semibold mr-2">Title:</span>
+                                    <span>${response.movie_info.Title}</span>
+                                </p>
+                                <p class="flex items-center">
+                                    <i class="fas fa-calendar w-6 text-gray-500"></i>
+                                    <span class="font-semibold mr-2">Year:</span>
+                                    <span>${response.movie_info.Year}</span>
+                                </p>
+                            </div>
+                            <div class="space-y-2">
+                                <p class="flex items-center">
+                                    <i class="fas fa-video w-6 text-gray-500"></i>
+                                    <span class="font-semibold mr-2">Director:</span>
+                                    <span>${response.movie_info.Director}</span>
+                                </p>
+                                <p class="flex items-center">
+                                    <i class="fas fa-star w-6 text-gray-500"></i>
+                                    <span class="font-semibold mr-2">Rating:</span>
+                                    <span>${response.movie_info.imdbRating || 'N/A'}</span>
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                    $('#movieDetails').html(movieHtml);
+
+                    // Statistics
+                    const positivePercentage = response.stats.positive_percentage;
+                    let statsHtml = `
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm font-medium text-gray-700">Sentiment Distribution</span>
+                                <span class="text-sm font-medium text-gray-700">${positivePercentage.toFixed(1)}%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill bg-blue-500"
+                                        style="width: ${positivePercentage}%"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4 mt-4">
+                                <div class="text-center p-4 rounded-lg bg-gray-50 border border-gray-200">
+                                    <div class="text-2xl font-bold text-blue-600">${response.stats.positive}</div>
+                                    <div class="text-sm text-gray-600">Positive Reviews</div>
+                                </div>
+                                <div class="text-center p-4 rounded-lg bg-gray-50 border border-gray-200">
+                                    <div class="text-2xl font-bold text-gray-600">${response.stats.negative}</div>
+                                    <div class="text-sm text-gray-600">Negative Reviews</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    $('#statsDetails').html(statsHtml);
+
+                    // Reviews
+                    let reviewsHtml = response.reviews.map(function(review, index) {
+                        const isPositive = review.sentiment === 'positive';
+                        return `
+                            <div class="rounded-lg p-4 bg-gray-50 border border-gray-200 card-hover"
+                                    style="animation-delay: ${index * 100}ms">
+                                <div class="flex items-start gap-3">
+                                    <div class="mt-1">
+                                        <i class="fas ${isPositive ? 'fa-thumbs-up text-blue-600' : 'fa-thumbs-down text-gray-600'} text-lg"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <p class="text-gray-700 mb-2">${review.review}</p>
+                                        <div class="flex items-center gap-2">
+                                            <span class="px-3 py-1 rounded-full text-sm font-medium ${
+                                                isPositive ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
+                                            }">
+                                                ${review.sentiment}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                    $('#reviewsDetails').html(reviewsHtml);
+
+                    $('#results').show();
+                    
+                    // Smooth scroll to results
+                    $('html, body').animate({
+                        scrollTop: $("#results").offset().top - 20
+                    }, 500);
+                },
+                error: function() {
+                    $('#loading').hide();
+                    $('#errorMessage').text('An error occurred while analyzing the movie reviews.');
+                    $('#error').show();
+                }
+            });
+        });
+    });
+</script>
+</body>
+</html>
