@@ -100,4 +100,9 @@ def test_model():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Use this for local development
+    # app.run(debug=True)
+    
+    # Use this for production
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
